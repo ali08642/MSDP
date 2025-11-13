@@ -6,9 +6,11 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LogIn, AlertCircle } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login } = useAuth()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -38,12 +40,13 @@ export default function LoginPage() {
       })
 
       if (!response.ok) {
-        throw new Error("Invalid email or password")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Invalid email or password")
       }
 
       const data = await response.json()
-      localStorage.setItem("user", JSON.stringify(data.user))
-      localStorage.setItem("token", data.token)
+
+      login(data.user, data.token)
 
       // Route based on role
       switch (data.user.role) {
@@ -60,7 +63,7 @@ export default function LoginPage() {
           router.push("/lab/data-entry")
           break
         default:
-          router.push("/dashboard")
+          router.push("/")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed")
@@ -73,6 +76,7 @@ export default function LoginPage() {
     { email: "admin@msdp.pk", password: "admin123", role: "Admin" },
     { email: "official@msdp.pk", password: "official123", role: "Health Official" },
     { email: "pharmacist@msdp.pk", password: "pharmacist123", role: "Pharmacist" },
+    { email: "lab@msdp.pk", password: "lab123", role: "Lab Technician" },
   ]
 
   return (
