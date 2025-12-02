@@ -2,20 +2,46 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Upload, CheckCircle, AlertCircle, Loader } from "lucide-react"
+import { api } from "@/lib/api"
 
 export default function DataUploadModule() {
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle")
   const [dataType, setDataType] = useState("lab")
   const [file, setFile] = useState<File | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [uploadHistory, setUploadHistory] = useState<any[]>([])
+  const [disease, setDisease] = useState<"MALARIA" | "DENGUE">("MALARIA")
 
   const dataTypes = [
-    { id: "lab", label: "Laboratory Data", description: "Daily confirmed COVID/Dengue/Malaria cases" },
-    { id: "pharmacy", label: "Pharmacy Sales", description: "Daily drug sales by category" },
-    { id: "weather", label: "Weather Data", description: "Temperature, humidity, rainfall" },
-    { id: "search", label: "Search Trends", description: "Google Trends queries" },
+    { 
+      id: "lab", 
+      label: "Laboratory Test Data", 
+      description: "CSV with: date, positive_tests, total_tests",
+      requiredColumns: ["date", "positive_tests", "total_tests"]
+    },
+    { 
+      id: "pharmacy", 
+      label: "Pharmacy Sales Data", 
+      description: "CSV with: date, brand_name, total_sales",
+      requiredColumns: ["date", "brand_name", "total_sales"]
+    },
   ]
+
+  // Load upload history on mount
+  useEffect(() => {
+    loadUploadHistory()
+  }, [])
+
+  const loadUploadHistory = async () => {
+    try {
+      const datasets = await api.datasets.list()
+      setUploadHistory(datasets)
+    } catch (err) {
+      console.error("Error loading upload history:", err)
+    }
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -25,12 +51,37 @@ export default function DataUploadModule() {
 
   const handleUpload = async () => {
     if (!file) return
+    
     setUploadStatus("uploading")
+    setError(null)
 
-    setTimeout(() => {
+    try {
+      const metadata = {
+        dataset_type: dataType.toUpperCase(),
+        disease: disease,
+        name: file.name,
+      }
+
+      const response = await api.datasets.upload(file, metadata)
+      
       setUploadStatus("success")
       setFile(null)
-    }, 2000)
+      
+      // Reload upload history
+      loadUploadHistory()
+      
+      // Reset after 3 seconds
+      setTimeout(() => {
+        setUploadStatus("idle")
+      }, 3000)
+    } catch (err: any) {
+      setUploadStatus("error")
+      setError(err.message || "Upload failed. Please check the file format and try again.")
+      
+      setTimeout(() => {
+        setUploadStatus("idle")
+      }, 5000)
+    }
   }
 
   return (
@@ -39,11 +90,39 @@ export default function DataUploadModule() {
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <h3 className="font-semibold text-blue-900 mb-2">Upload Guidelines</h3>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>• Files must be in CSV or XLSX format</li>
-          <li>• Dates should be in YYYY-MM-DD format</li>
-          <li>• Daily aggregation is required (one row per day)</li>
-          <li>• No PII should be included in uploads</li>
+          <li>• Files must be in CSV format</li>
+          <li>• Date format: DD/MM/YYYY or YYYY-MM-DD</li>
+          <li>• Lab tests: columns must be "date, positive_tests, total_tests"</li>
+          <li>• Pharmacy: columns must be "date, brand_name, total_sales"</li>
+          <li>• No header modifications - use exact column names</li>
         </ul>
+      </div>
+
+      {/* Disease Selection */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Select Disease</h2>
+        <div className="flex gap-4">
+          <button
+            onClick={() => setDisease("MALARIA")}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              disease === "MALARIA" 
+                ? "bg-primary text-white" 
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            Malaria
+          </button>
+          <button
+            onClick={() => setDisease("DENGUE")}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              disease === "DENGUE" 
+                ? "bg-primary text-white" 
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            Dengue
+          </button>
+        </div>
       </div>
 
       {/* Data Type Selection */}
@@ -70,16 +149,28 @@ export default function DataUploadModule() {
         <h2 className="text-lg font-semibold text-foreground mb-4">Upload File</h2>
         <div className="border-2 border-dashed border-slate-300 rounded-lg p-12 text-center hover:border-primary transition-colors">
           <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-          <p className="text-slate-600 mb-4">Drag and drop your file here, or click to browse</p>
-          <input type="file" accept=".csv,.xlsx" onChange={handleFileChange} className="hidden" id="file-input" />
+          <p className="text-slate-600 mb-2">Drag and drop your CSV file here, or click to browse</p>
+          <p className="text-sm text-slate-500 mb-4">
+            {dataType === "lab" 
+              ? "Expected: date, positive_tests, total_tests" 
+              : "Expected: date, brand_name, total_sales"}
+          </p>
+          <input 
+            type="file" 
+            accept=".csv" 
+            onChange={handleFileChange} 
+            className="hidden" 
+            id="file-input"
+            disabled={uploadStatus === "uploading"}
+          />
           <label htmlFor="file-input" className="inline-block">
-            <button className="bg-primary text-white px-6 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors">
+            <span className="bg-primary text-white px-6 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors cursor-pointer inline-block">
               Choose File
-            </button>
+            </span>
           </label>
           {file && (
             <p className="text-sm text-slate-600 mt-4">
-              Selected: <span className="font-medium">{file.name}</span>
+              Selected: <span className="font-medium">{file.name}</span> ({(file.size / 1024).toFixed(2)} KB)
             </p>
           )}
         </div>
@@ -102,7 +193,7 @@ export default function DataUploadModule() {
             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
             <div>
               <p className="font-semibold text-red-900">Upload failed</p>
-              <p className="text-sm text-red-800">Please check the file format and try again</p>
+              <p className="text-sm text-red-800">{error || "Please check the file format and try again"}</p>
             </div>
           </div>
         )}
@@ -121,38 +212,48 @@ export default function DataUploadModule() {
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-4">Recent Uploads</h2>
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">File Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Type</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Uploaded</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {[
-                { name: "lab-cases-nov.csv", type: "Laboratory", date: "2025-01-10", status: "Processed" },
-                { name: "pharmacy-sales.xlsx", type: "Pharmacy", date: "2025-01-10", status: "Processing" },
-                { name: "weather-data.csv", type: "Weather", date: "2025-01-09", status: "Processed" },
-              ].map((upload, idx) => (
-                <tr key={idx} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 text-sm text-foreground">{upload.name}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{upload.type}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{upload.date}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        upload.status === "Processed" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                      }`}
-                    >
-                      {upload.status}
-                    </span>
-                  </td>
+          {uploadHistory.length === 0 ? (
+            <div className="p-8 text-center text-slate-600">
+              No uploads yet. Upload your first dataset above.
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">File Name</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Type</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Disease</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Uploaded</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {uploadHistory.slice(0, 10).map((upload, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50">
+                    <td className="px-6 py-4 text-sm text-foreground">{upload.name}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600 capitalize">{upload.dataset_type?.toLowerCase()}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{upload.disease}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">
+                      {new Date(upload.uploaded_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          upload.status === "VALIDATED" 
+                            ? "bg-green-100 text-green-800" 
+                            : upload.status === "PROCESSING"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {upload.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
