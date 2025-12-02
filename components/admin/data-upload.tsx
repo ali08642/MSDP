@@ -37,9 +37,11 @@ export default function DataUploadModule() {
   const loadUploadHistory = async () => {
     try {
       const datasets = await api.datasets.list()
-      setUploadHistory(datasets)
+      // Ensure we always have an array
+      setUploadHistory(Array.isArray(datasets) ? datasets : [])
     } catch (err) {
       console.error("Error loading upload history:", err)
+      setUploadHistory([]) // Set empty array on error
     }
   }
 
@@ -228,13 +230,13 @@ export default function DataUploadModule() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {uploadHistory.slice(0, 10).map((upload, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 text-sm text-foreground">{upload.name}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600 capitalize">{upload.dataset_type?.toLowerCase()}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{upload.disease}</td>
+                {Array.isArray(uploadHistory) && uploadHistory.slice(0, 10).map((upload, idx) => (
+                  <tr key={upload.id || idx} className="hover:bg-slate-50">
+                    <td className="px-6 py-4 text-sm text-foreground">{upload.name || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600 capitalize">{upload.dataset_type?.toLowerCase() || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{upload.disease || 'N/A'}</td>
                     <td className="px-6 py-4 text-sm text-slate-600">
-                      {new Date(upload.uploaded_at).toLocaleDateString()}
+                      {upload.uploaded_at ? new Date(upload.uploaded_at).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <span
