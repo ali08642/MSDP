@@ -55,8 +55,8 @@ export function ModelTraining() {
       const response = await api.forecasting.getDataRange(selectedDisease)
       setDataRange(response)
       
-      // Set default dates
-      if (response.training_start && response.training_end) {
+      // Set default dates only if valid data exists
+      if (response?.training_start && response?.training_end) {
         setTrainingStart(parseISO(response.training_start))
         setTrainingEnd(parseISO(response.training_end))
         
@@ -67,7 +67,7 @@ export function ModelTraining() {
       }
     } catch (err) {
       console.error("Error loading data range:", err)
-      setError("Failed to load available data range")
+      setError("Failed to load available data range. Please ensure lab and pharmacy data is uploaded first.")
     }
   }
 
@@ -167,7 +167,7 @@ export function ModelTraining() {
           </div>
 
           {/* Available Data Range */}
-          {dataRange && (
+          {dataRange && dataRange.training_start && dataRange.training_end && (
             <div className="rounded-lg border border-slate-200 p-4 bg-slate-50">
               <h3 className="font-medium mb-2">Available Data Range</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -190,6 +190,21 @@ export function ModelTraining() {
                   <p className="font-mono font-semibold text-green-600">
                     {format(parseISO(dataRange.training_start), "PPP")} to{" "}
                     {format(parseISO(dataRange.training_end), "PPP")}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* No Data Warning */}
+          {dataRange && (!dataRange.training_start || !dataRange.training_end) && (
+            <div className="rounded-lg border border-yellow-200 p-4 bg-yellow-50">
+              <div className="flex gap-3">
+                <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
+                <div>
+                  <h3 className="font-medium text-yellow-800 mb-1">No Training Data Available</h3>
+                  <p className="text-sm text-yellow-700">
+                    Please upload lab test and pharmacy sales data before training the model.
                   </p>
                 </div>
               </div>
