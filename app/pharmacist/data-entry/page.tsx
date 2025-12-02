@@ -6,7 +6,7 @@ import PharmacyPOSInterface from "@/components/pharmacy/pos-interface"
 
 export default function PharmacyDataEntry() {
   return (
-    <ProtectedRoute requiredRoles={["pharmacist"]}>
+    <ProtectedRoute requiredRoles={["PHARMACIST"]}>
       <PharmacyLayout>
         <PharmacyPOSInterface />
       </PharmacyLayout>

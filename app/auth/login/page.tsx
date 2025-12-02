@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-
+import React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -10,7 +9,7 @@ import { useAuth } from "@/lib/auth-context"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login } = useAuth()
+  const { login, user } = useAuth()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -33,44 +32,38 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      })
+      // Call Django backend API through auth context
+      await login(formData.email, formData.password)
+      
+      // Router will be called in useEffect after user state updates
+    } catch (err: any) {
+      setError(err?.message || "Invalid email or password")
+    } finally {
+      setLoading(false)
+    }
+  }
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Invalid email or password")
-      }
-
-      const data = await response.json()
-
-      login(data.user, data.token)
-
-      // Route based on role
-      switch (data.user.role) {
-        case "admin":
+  // Redirect after successful login
+  React.useEffect(() => {
+    if (user) {
+      switch (user.role) {
+        case "ADMIN":
           router.push("/admin/dashboard")
           break
-        case "health_official":
+        case "HEALTH_OFFICIAL":
           router.push("/health-official/dashboard")
           break
-        case "pharmacist":
+        case "PHARMACIST":
           router.push("/pharmacist/data-entry")
           break
-        case "lab_technician":
+        case "LAB_TECH":
           router.push("/lab/data-entry")
           break
         default:
           router.push("/")
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed")
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [user, router])
 
   const demoUsers = [
     { email: "admin@msdp.pk", password: "admin123", role: "Admin" },

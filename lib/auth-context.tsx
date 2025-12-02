@@ -2,23 +2,31 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
+import { api, TokenManager } from "./api"
 
-export type UserRole = "admin" | "health_official" | "pharmacist" | "lab_technician" | "patient"
+export type UserRole = "ADMIN" | "HEALTH_OFFICIAL" | "PHARMACIST" | "LAB_TECH"
 
 export interface User {
-  id: string
+  id: number
   email: string
-  fullName: string
+  first_name: string
+  last_name: string
   role: UserRole
-  organization?: string
+  is_active: boolean
 }
 
 interface AuthContextType {
   user: User | null
-  token: string | null
   isLoading: boolean
-  logout: () => void
-  login: (user: User, token: string) => void
+  logout: () => Promise<void>
+  login: (email: string, password: string) => Promise<void>
+  register: (userData: {
+    email: string
+    password: string
+    first_name: string
+    last_name: string
+    role: UserRole
+  }) => Promise<void>
   isAuthenticated: boolean
 }
 
@@ -26,37 +34,71 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Load user profile on mount if token exists
   useEffect(() => {
-    // Restore auth state from localStorage
-    const storedUser = localStorage.getItem("user")
-    const storedToken = localStorage.getItem("token")
-
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser))
-      setToken(storedToken)
+    const loadUser = async () => {
+      const accessToken = TokenManager.getAccessToken()
+      
+      if (accessToken) {
+        try {
+          const userData = await api.auth.getProfile()
+          setUser(userData)
+        } catch (error) {
+          console.error('Failed to load user profile:', error)
+          TokenManager.clearTokens()
+        }
+      }
+      
+      setIsLoading(false)
     }
-    setIsLoading(false)
+
+    loadUser()
   }, [])
 
-  const login = (newUser: User, newToken: string) => {
-    setUser(newUser)
-    setToken(newToken)
-    localStorage.setItem("user", JSON.stringify(newUser))
-    localStorage.setItem("token", newToken)
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await api.auth.login(email, password)
+      setUser(response.user)
+    } catch (error) {
+      console.error('Login failed:', error)
+      throw error
+    }
   }
 
-  const logout = () => {
-    localStorage.removeItem("user")
-    localStorage.removeItem("token")
+  const register = async (userData: {
+    email: string
+    password: string
+    first_name: string
+    last_name: string
+    role: UserRole
+  }) => {
+    try {
+      const response = await api.auth.register(userData)
+      setUser(response.user)
+    } catch (error) {
+      console.error('Registration failed:', error)
+      throw error
+    }
+  }
+
+  const logout = async () => {
+    await api.auth.logout()
     setUser(null)
-    setToken(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, logout, login, isAuthenticated: !!user }}>
+    <AuthContext.Provider 
+      value={{ 
+        user, 
+        isLoading, 
+        logout, 
+        login, 
+        register,
+        isAuthenticated: !!user 
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

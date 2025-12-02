@@ -20,7 +20,7 @@ export default function HealthOfficialDashboard() {
   ]
 
   return (
-    <ProtectedRoute requiredRoles={["health_official"]}>
+    <ProtectedRoute requiredRoles={["HEALTH_OFFICIAL"]}>
       <HealthOfficialLayout>
         <div className="min-h-screen bg-slate-50">
           {/* Header */}

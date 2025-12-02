@@ -4,10 +4,11 @@ import { ProtectedRoute } from "@/components/protected-route"
 import AdminLayout from "@/components/admin/layout"
 import DataUploadModule from "@/components/admin/data-upload"
 import ModelManagement from "@/components/admin/model-management"
+import { ModelTraining } from "@/components/admin/model-training"
 import UserManagement from "@/components/admin/user-management"
 import SystemMonitoring from "@/components/admin/system-monitoring"
 import { useState } from "react"
-import { UploadCloud, Settings, Users, Activity } from "lucide-react"
+import { UploadCloud, Settings, Users, Activity, Brain } from "lucide-react"
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview")
@@ -15,12 +16,13 @@ export default function AdminDashboard() {
   const tabs = [
     { id: "overview", label: "Overview", icon: Activity },
     { id: "upload", label: "Data Upload", icon: UploadCloud },
+    { id: "training", label: "Model Training", icon: Brain },
     { id: "models", label: "Models", icon: Settings },
     { id: "users", label: "Users", icon: Users },
   ]
 
   return (
-    <ProtectedRoute requiredRoles={["admin"]}>
+    <ProtectedRoute requiredRoles={["ADMIN"]}>
       <AdminLayout>
         <div className="min-h-screen bg-slate-50">
           {/* Header */}
@@ -60,6 +62,7 @@ export default function AdminDashboard() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             {activeTab === "overview" && <SystemMonitoring />}
             {activeTab === "upload" && <DataUploadModule />}
+            {activeTab === "training" && <ModelTraining />}
             {activeTab === "models" && <ModelManagement />}
             {activeTab === "users" && <UserManagement />}
           </div>

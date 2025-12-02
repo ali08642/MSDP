@@ -1,23 +1,22 @@
 "use client"
 
-import type React from "react"
-
+import React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { UserPlus, AlertCircle } from "lucide-react"
-
-type UserRole = "admin" | "health_official" | "pharmacist" | "lab_technician"
+import { useAuth, type UserRole } from "@/lib/auth-context"
 
 export default function SignupPage() {
   const router = useRouter()
+  const { register, user } = useAuth()
   const [formData, setFormData] = useState({
-    fullName: "",
+    first_name: "",
+    last_name: "",
     email: "",
     password: "",
     confirmPassword: "",
-    role: "health_official" as UserRole,
-    organization: "",
+    role: "HEALTH_OFFICIAL" as UserRole,
   })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -34,6 +33,12 @@ export default function SignupPage() {
     e.preventDefault()
     setError("")
 
+    // Validate password length
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long")
+      return
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
       return
@@ -41,29 +46,49 @@ export default function SignupPage() {
 
     setLoading(true)
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+      await register({
+        email: formData.email,
+        password: formData.password,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        role: formData.role,
       })
-
-      if (!response.ok) {
-        throw new Error("Signup failed")
-      }
-
-      router.push("/auth/login?registered=true")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed")
+      
+      // Router redirect handled by useEffect
+    } catch (err: any) {
+      setError(err?.message || "Registration failed. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
+  // Redirect after successful registration
+  React.useEffect(() => {
+    if (user) {
+      switch (user.role) {
+        case "ADMIN":
+          router.push("/admin/dashboard")
+          break
+        case "HEALTH_OFFICIAL":
+          router.push("/health-official/dashboard")
+          break
+        case "PHARMACIST":
+          router.push("/pharmacist/data-entry")
+          break
+        case "LAB_TECH":
+          router.push("/lab/data-entry")
+          break
+        default:
+          router.push("/")
+      }
+    }
+  }, [user, router])
+
   const roleOptions: { value: UserRole; label: string; description: string }[] = [
-    { value: "admin", label: "Administrator", description: "Manage system, data uploads, models" },
-    { value: "health_official", label: "Health Official", description: "View forecasts, alerts, reports" },
-    { value: "pharmacist", label: "Pharmacist", description: "Enter daily pharmacy sales data" },
-    { value: "lab_technician", label: "Lab Technician", description: "Enter lab test results" },
+    { value: "ADMIN", label: "Administrator", description: "Manage system, data uploads, models" },
+    { value: "HEALTH_OFFICIAL", label: "Health Official", description: "View forecasts, alerts, reports" },
+    { value: "PHARMACIST", label: "Pharmacist", description: "Enter daily pharmacy sales data" },
+    { value: "LAB_TECH", label: "Lab Technician", description: "Enter lab test results" },
   ]
 
   return (
@@ -85,17 +110,32 @@ export default function SignupPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Full Name</label>
-              <input
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                placeholder="John Doe"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-                required
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">First Name</label>
+                <input
+                  type="text"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                  placeholder="John"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Last Name</label>
+                <input
+                  type="text"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                  placeholder="Doe"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  required
+                />
+              </div>
             </div>
 
             <div>
@@ -108,18 +148,6 @@ export default function SignupPage() {
                 placeholder="your.email@example.com"
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
                 required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Organization</label>
-              <input
-                type="text"
-                name="organization"
-                value={formData.organization}
-                onChange={handleChange}
-                placeholder="Health Department / Hospital"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
 
@@ -159,6 +187,7 @@ export default function SignupPage() {
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
                 required
               />
+              <p className="text-xs text-slate-500 mt-1">Must be at least 8 characters</p>
             </div>
 
             <div>
@@ -172,6 +201,9 @@ export default function SignupPage() {
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
                 required
               />
+              {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                <p className="text-xs text-red-600 mt-1">Passwords do not match</p>
+              )}
             </div>
 
             <label className="flex items-start">

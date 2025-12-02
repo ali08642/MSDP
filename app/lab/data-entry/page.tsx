@@ -6,7 +6,7 @@ import LabEntrySystem from "@/components/lab/entry-system"
 
 export default function LabDataEntry() {
   return (
-    <ProtectedRoute requiredRoles={["lab_technician"]}>
+    <ProtectedRoute requiredRoles={["LAB_TECH"]}>
       <LabLayout>
         <LabEntrySystem />
       </LabLayout>
