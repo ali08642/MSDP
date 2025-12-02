@@ -198,7 +198,7 @@ export const api = {
       });
 
       const accessToken = TokenManager.getAccessToken();
-      const response = await fetch(`${API_BASE_URL}/api/datasets/upload/`, {
+      const response = await fetch(`${API_BASE_URL}/api/datasets/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
