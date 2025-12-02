@@ -1,5 +1,7 @@
 // API Configuration and Utilities
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = typeof window !== 'undefined' 
+  ? (process.env.NEXT_PUBLIC_API_URL || 'https://web-production-58ab7.up.railway.app')
+  : (process.env.NEXT_PUBLIC_API_URL || 'https://web-production-58ab7.up.railway.app');
 
 // Token management
 export const TokenManager = {
