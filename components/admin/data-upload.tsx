@@ -66,15 +66,58 @@ export default function DataUploadModule() {
 
       const response = await api.datasets.upload(file, metadata)
       
+      // Dataset uploaded, now poll for validation completion
+      const datasetId = response.id
+      console.log(`📤 Dataset uploaded (ID: ${datasetId}), validating in background...`)
+      
       setUploadStatus("success")
       setFile(null)
       
-      // Reload upload history
-      await loadUploadHistory()
+      // Poll for validation status (check every 2 seconds, max 60 seconds)
+      let attempts = 0
+      const maxAttempts = 30
+      
+      const pollStatus = async () => {
+        try {
+          const datasets = await api.datasets.list()
+          const dataset = datasets.find((d: any) => d.id === datasetId)
+          
+          if (!dataset) {
+            console.error("Dataset not found")
+            return
+          }
+          
+          console.log(`📊 Validation status: ${dataset.status}`)
+          
+          if (dataset.status === 'PROCESSED') {
+            console.log("✅ Dataset validated successfully!")
+            await loadUploadHistory()
+            return
+          } else if (dataset.status === 'INVALID') {
+            console.error("❌ Validation failed:", dataset.validation_errors)
+            setError(JSON.stringify(dataset.validation_errors))
+            setUploadStatus("error")
+            return
+          }
+          
+          // Still validating, check again
+          attempts++
+          if (attempts < maxAttempts) {
+            setTimeout(pollStatus, 2000)
+          } else {
+            console.log("⏱️ Validation taking longer than expected, check dataset list")
+            await loadUploadHistory()
+          }
+        } catch (pollError) {
+          console.error("Polling error:", pollError)
+        }
+      }
+      
+      // Start polling after 1 second
+      setTimeout(pollStatus, 1000)
       
       // Show success message with instructions
-      console.log("✅ Dataset uploaded and validated successfully!")
-      console.log("📊 Go to Model Training tab and click 'Refresh' to see updated data ranges")
+      console.log("📊 Go to Model Training tab and click 'Refresh' after validation completes")
       
       // Reset after 5 seconds (longer to give user time to read the message)
       setTimeout(() => {
