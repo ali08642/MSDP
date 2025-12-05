@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CalendarIcon, AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
+import { CalendarIcon, AlertCircle, CheckCircle2, Loader2, RefreshCw } from "lucide-react"
 import { format, addDays, parseISO } from "date-fns"
 import { api } from "@/lib/api"
 
@@ -43,6 +43,8 @@ export function ModelTraining() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([])
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Load data range when disease changes
   useEffect(() => {
@@ -56,8 +58,10 @@ export function ModelTraining() {
 
   const loadDataRange = async () => {
     try {
+      setIsRefreshing(true)
       const response = await api.forecasting.getDataRange(selectedDisease)
       setDataRange(response)
+      setLastUpdated(new Date())
       
       // Check if data is available
       if (!response.available) {
@@ -83,7 +87,14 @@ export function ModelTraining() {
     } catch (err) {
       console.error("Error loading data range:", err)
       setError("Failed to load available data range. Please ensure lab and pharmacy data is uploaded first.")
+    } finally {
+      setIsRefreshing(false)
     }
+  }
+
+  const handleRefreshDataRange = async () => {
+    setError(null)
+    await loadDataRange()
   }
 
   const loadTrainingSessions = async () => {
@@ -190,7 +201,28 @@ export function ModelTraining() {
           {/* Available Data Range */}
           {dataRange && dataRange.training_start && dataRange.training_end && dataRange.lab_test_start && dataRange.lab_test_end && dataRange.pharma_start && dataRange.pharma_end && (
             <div className="rounded-lg border border-slate-200 p-4 bg-slate-50">
-              <h3 className="font-medium mb-2">Available Data Range</h3>
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-medium">Available Data Range</h3>
+                <div className="flex items-center gap-2">
+                  {lastUpdated && (
+                    <span className="text-xs text-slate-500">
+                      Updated: {format(lastUpdated, "HH:mm:ss")}
+                    </span>
+                  )}
+                  <button
+                    onClick={handleRefreshDataRange}
+                    disabled={isRefreshing}
+                    className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {isRefreshing ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    Refresh
+                  </button>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-slate-600">Lab Test Data:</p>

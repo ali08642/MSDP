@@ -70,12 +70,16 @@ export default function DataUploadModule() {
       setFile(null)
       
       // Reload upload history
-      loadUploadHistory()
+      await loadUploadHistory()
       
-      // Reset after 3 seconds
+      // Show success message with instructions
+      console.log("✅ Dataset uploaded and validated successfully!")
+      console.log("📊 Go to Model Training tab and click 'Refresh' to see updated data ranges")
+      
+      // Reset after 5 seconds (longer to give user time to read the message)
       setTimeout(() => {
         setUploadStatus("idle")
-      }, 3000)
+      }, 5000)
     } catch (err: any) {
       setUploadStatus("error")
       setError(err.message || "Upload failed. Please check the file format and try again.")
@@ -193,9 +197,12 @@ export default function DataUploadModule() {
         {uploadStatus === "success" && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex gap-3">
             <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-green-900">Upload successful</p>
-              <p className="text-sm text-green-800">Data has been validated and queued for processing</p>
+            <div className="flex-1">
+              <p className="font-semibold text-green-900">Upload successful!</p>
+              <p className="text-sm text-green-800">Data has been validated and imported.</p>
+              <p className="text-xs text-green-700 mt-2 font-medium">
+                💡 Go to <span className="underline">Model Training</span> tab and click <span className="font-bold">Refresh</span> to see updated data ranges
+              </p>
             </div>
           </div>
         )}
