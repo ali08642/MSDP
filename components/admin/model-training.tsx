@@ -7,12 +7,16 @@ import { api } from "@/lib/api"
 
 interface DataRange {
   disease: string
-  lab_test_start: string
-  lab_test_end: string
-  pharma_start: string
-  pharma_end: string
-  training_start: string
-  training_end: string
+  available: boolean
+  error?: string
+  lab_test_start: string | null
+  lab_test_end: string | null
+  pharma_start: string | null
+  pharma_end: string | null
+  training_start: string | null
+  training_end: string | null
+  medicines?: string[]
+  note?: string
 }
 
 interface TrainingSession {
@@ -55,15 +59,26 @@ export function ModelTraining() {
       const response = await api.forecasting.getDataRange(selectedDisease)
       setDataRange(response)
       
+      // Check if data is available
+      if (!response.available) {
+        setError(response.error || "Insufficient data. Please upload both lab test and pharmacy sales data.")
+        setTrainingStart(undefined)
+        setTrainingEnd(undefined)
+        setForecastStart(undefined)
+        setForecastEnd(undefined)
+        return
+      }
+      
       // Set default dates only if valid data exists
-      if (response?.training_start && response?.training_end) {
+      if (response.training_start && response.training_end) {
         setTrainingStart(parseISO(response.training_start))
         setTrainingEnd(parseISO(response.training_end))
         
         // Forecast starts the day after training ends
         const forecastStartDate = addDays(parseISO(response.training_end), 1)
         setForecastStart(forecastStartDate)
-        setForecastEnd(addDays(forecastStartDate, 90)) // Default 90 days forecast
+        // Forecast ends at the maximum available date
+        setForecastEnd(parseISO(response.training_end))
       }
     } catch (err) {
       console.error("Error loading data range:", err)
@@ -100,12 +115,17 @@ export function ModelTraining() {
     }
 
     // Validate against available data range
-    if (dataRange) {
+    if (dataRange && dataRange.training_start && dataRange.training_end) {
       const minDate = parseISO(dataRange.training_start)
       const maxDate = parseISO(dataRange.training_end)
 
       if (trainingStart < minDate || trainingEnd > maxDate) {
         return `Training dates must be within available range: ${format(minDate, "PPP")} to ${format(maxDate, "PPP")}`
+      }
+      
+      // Forecast cannot exceed available data
+      if (forecastEnd > maxDate) {
+        return `Forecast end date cannot exceed ${format(maxDate, "PPP")}. Please upload more recent pharmacy sales data.`
       }
     }
 
@@ -168,7 +188,7 @@ export function ModelTraining() {
           </div>
 
           {/* Available Data Range */}
-          {dataRange && dataRange.training_start && dataRange.training_end && (
+          {dataRange && dataRange.training_start && dataRange.training_end && dataRange.lab_test_start && dataRange.lab_test_end && dataRange.pharma_start && dataRange.pharma_end && (
             <div className="rounded-lg border border-slate-200 p-4 bg-slate-50">
               <h3 className="font-medium mb-2">Available Data Range</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -185,13 +205,21 @@ export function ModelTraining() {
                     {format(parseISO(dataRange.pharma_start), "PPP")} to{" "}
                     {format(parseISO(dataRange.pharma_end), "PPP")}
                   </p>
+                  {dataRange.medicines && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Medicines: {dataRange.medicines.join(", ")}
+                    </p>
+                  )}
                 </div>
                 <div className="col-span-2 pt-2 border-t">
-                  <p className="text-slate-600">Valid Training Range:</p>
+                  <p className="text-slate-600">Valid Training/Forecast Range:</p>
                   <p className="font-mono font-semibold text-green-600">
                     {format(parseISO(dataRange.training_start), "PPP")} to{" "}
                     {format(parseISO(dataRange.training_end), "PPP")}
                   </p>
+                  {dataRange.note && (
+                    <p className="text-xs text-blue-600 mt-1">{dataRange.note}</p>
+                  )}
                 </div>
               </div>
             </div>
