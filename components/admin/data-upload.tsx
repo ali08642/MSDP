@@ -67,7 +67,17 @@ export default function DataUploadModule() {
       const response = await api.datasets.upload(file, metadata)
       
       // Dataset uploaded, now poll for validation completion
-      const datasetId = response.id
+      const datasetId = response?.id
+      
+      if (!datasetId) {
+        console.warn("⚠️ Dataset uploaded but no ID returned, skipping polling")
+        setUploadStatus("success")
+        setFile(null)
+        await loadUploadHistory()
+        setTimeout(() => setUploadStatus("idle"), 5000)
+        return
+      }
+      
       console.log(`📤 Dataset uploaded (ID: ${datasetId}), validating in background...`)
       
       setUploadStatus("success")
@@ -79,7 +89,9 @@ export default function DataUploadModule() {
       
       const pollStatus = async () => {
         try {
-          const datasets = await api.datasets.list()
+          const response = await api.datasets.list()
+          // Handle both array and object responses
+          const datasets = Array.isArray(response) ? response : (response.results || [])
           const dataset = datasets.find((d: any) => d.id === datasetId)
           
           if (!dataset) {
