@@ -29,7 +29,7 @@ interface TrainingSession {
 }
 
 export function ModelTraining() {
-  const [selectedDisease, setSelectedDisease] = useState<"MALARIA" | "DENGUE">("MALARIA")
+  const [selectedDisease, setSelectedDisease] = useState<"MALARIA" | "DENGUE" | "DIARRHOEA">("MALARIA")
   const [dataRange, setDataRange] = useState<DataRange | null>(null)
   const [trainingStart, setTrainingStart] = useState<Date>()
   const [trainingEnd, setTrainingEnd] = useState<Date>()
@@ -163,6 +163,7 @@ export function ModelTraining() {
             >
               <option value="MALARIA">Malaria</option>
               <option value="DENGUE">Dengue</option>
+              <option value="DIARRHOEA">Diarrhoea</option>
             </select>
           </div>
 

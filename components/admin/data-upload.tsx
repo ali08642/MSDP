@@ -12,7 +12,7 @@ export default function DataUploadModule() {
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [uploadHistory, setUploadHistory] = useState<any[]>([])
-  const [disease, setDisease] = useState<"MALARIA" | "DENGUE">("MALARIA")
+  const [disease, setDisease] = useState<"MALARIA" | "DENGUE" | "DIARRHOEA">("MALARIA")
 
   const dataTypes = [
     { 
@@ -123,6 +123,16 @@ export default function DataUploadModule() {
             }`}
           >
             Dengue
+          </button>
+          <button
+            onClick={() => setDisease("DIARRHOEA")}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              disease === "DIARRHOEA" 
+                ? "bg-primary text-white" 
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            Diarrhoea
           </button>
         </div>
       </div>

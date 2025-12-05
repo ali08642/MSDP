@@ -27,10 +27,11 @@ export default function DiseaseForecasts() {
   const [customForecasts, setCustomForecasts] = useState<any>(null)
 
   // Updated to match Django backend disease names
-  const diseases = ["MALARIA", "DENGUE"]
+  const diseases = ["MALARIA", "DENGUE", "DIARRHOEA"]
   const diseaseNames: Record<string, string> = {
     MALARIA: "Malaria",
     DENGUE: "Dengue",
+    DIARRHOEA: "Diarrhoea",
   }
 
   // Fetch forecasts when disease or horizon changes
